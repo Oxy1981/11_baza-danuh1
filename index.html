@@ -1,0 +1,1352 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>SQL-практикум</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Onest:wght@400;500;600&family=Unbounded:wght@500;700&display=swap">
+<style>
+/* Концепція: каталожна картка бібліотеки. Ліворуч робоче місце (завдання, редактор, результат), праворуч довідник по базі.
+   Холодний сіро-синій папір, чорнильний текст, один кобальтовий акцент; зелений/червоний/бурштиновий лише для стану. */
+:root {
+  --bg: #e8edf1;
+  --surface: #f6f8fa;
+  --surface-2: #dde5eb;
+  --ink: #0e1e2c;
+  --muted: #546576;
+  --line: #c3cfd9;
+  --accent: #2b45c8;
+  --accent-ink: #ffffff;
+  --code-bg: #0f1b27;
+  --code-fg: #e4edf5;
+  --chip-bg: rgba(255, 255, 255, 0.1);
+  --chip-fg: #b9c9d9;
+  --good: #17743f;
+  --good-bg: #d6eedf;
+  --bad: #a8261d;
+  --bad-bg: #f6dcd9;
+  --warn: #7a4e00;
+  --warn-bg: #f6e8c9;
+  --font-display: 'Unbounded', 'Onest', system-ui, sans-serif;
+  --font-body: 'Onest', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0b141d; --surface: #121e2a; --surface-2: #1a2a39; --ink: #e5edf4; --muted: #8fa3b5; --line: #26384a;
+    --accent: #8ea3ff; --accent-ink: #0b141d; --code-bg: #07101a; --code-fg: #dbe7f2;
+    --good: #6ed39a; --good-bg: #12301f; --bad: #ff8f86; --bad-bg: #35171a; --warn: #f0c066; --warn-bg: #33280f;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0b141d; --surface: #121e2a; --surface-2: #1a2a39; --ink: #e5edf4; --muted: #8fa3b5; --line: #26384a;
+  --accent: #8ea3ff; --accent-ink: #0b141d; --code-bg: #07101a; --code-fg: #dbe7f2;
+  --good: #6ed39a; --good-bg: #12301f; --bad: #ff8f86; --bad-bg: #35171a; --warn: #f0c066; --warn-bg: #33280f;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink);
+  font: 400 16px/1.55 var(--font-body);
+  padding-inline: 16px; padding-block: 28px 56px;
+}
+.wrap { max-width: 1120px; margin-inline: auto; display: flex; flex-direction: column; gap: 22px; }
+h1, h2, h3, p { margin: 0; }
+code { font: 500 0.88em var(--font-mono); background: var(--surface-2); padding: 0.12em 0.38em; border-radius: 5px; overflow-wrap: anywhere; }
+button { font-family: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Шапка */
+.eyebrow { font: 500 12px/1.2 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+header { display: flex; flex-direction: column; gap: 10px; }
+h1 { font: 700 clamp(1.7rem, 5vw, 2.6rem)/1.1 var(--font-display); letter-spacing: -0.02em; text-wrap: balance; }
+.lead { max-width: 62ch; color: var(--muted); }
+.progress { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; }
+.progress-bar { flex: 1 1 160px; max-width: 280px; height: 6px; border-radius: 3px; background: var(--surface-2); overflow: hidden; }
+.progress-bar > i { display: block; height: 100%; width: 0; background: var(--accent); transition: width 0.3s; }
+
+/* Перемикач завдань: це справжня послідовність, тому числа несуть інформацію */
+.pips { display: flex; flex-wrap: wrap; gap: 8px; }
+.pip {
+  width: 42px; height: 42px; border-radius: 50%;
+  border: 1.5px solid var(--line); background: var(--surface); color: var(--ink);
+  font: 500 14px var(--font-mono); cursor: pointer; font-variant-numeric: tabular-nums;
+}
+.pip:hover { border-color: var(--accent); }
+.pip.done { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.pip.seen { border-style: dashed; color: var(--muted); }
+.pip.current { box-shadow: 0 0 0 3px var(--bg), 0 0 0 5px var(--accent); }
+.legend { font-size: 13px; color: var(--muted); }
+
+/* Основна сітка */
+.layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; }
+@media (min-width: 980px) {
+  .layout { grid-template-columns: minmax(0, 1.65fr) minmax(300px, 1fr); align-items: start; }
+  #schema { position: sticky; top: 16px; }
+}
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 22px; min-width: 0; }
+@media (max-width: 480px) { .card { padding: 16px; } }
+.stack { display: flex; flex-direction: column; gap: 16px; }
+
+.task-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.tag { font: 500 12px var(--font-mono); background: var(--surface-2); padding: 4px 10px; border-radius: 999px; color: var(--ink); }
+h2 { font: 700 clamp(1.25rem, 3.2vw, 1.6rem)/1.2 var(--font-display); letter-spacing: -0.015em; text-wrap: balance; }
+.concept { background: var(--surface-2); border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; }
+.concept .label { font: 500 11.5px var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.concept p { max-width: 68ch; }
+.concept code { background: var(--surface); }
+.ask { font-size: 1.1rem; line-height: 1.5; font-weight: 500; max-width: 62ch; }
+.shape { font: 400 13px var(--font-mono); color: var(--muted); }
+.schema-line { font: 400 12.5px/1.6 var(--font-mono); color: var(--muted); display: flex; flex-wrap: wrap; gap: 2px 14px; }
+.schema-line b { color: var(--ink); font-weight: 500; }
+
+/* Редактор */
+.editor { background: var(--code-bg); border-radius: 12px; overflow: hidden; }
+.editor:focus-within { box-shadow: 0 0 0 2px var(--accent); }
+.editor textarea {
+  display: block; width: 100%; min-height: 132px; resize: vertical;
+  background: transparent; color: var(--code-fg); border: 0; outline: none;
+  padding: 14px 16px; font: 500 15px/1.65 var(--font-mono); tab-size: 2;
+}
+.editor textarea::placeholder { color: var(--chip-fg); opacity: 0.55; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 12px 12px; }
+.chip {
+  font: 500 12px var(--font-mono); color: var(--chip-fg); background: var(--chip-bg);
+  border: 0; border-radius: 6px; padding: 5px 9px; cursor: pointer;
+}
+.chip:hover { color: var(--code-fg); }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.btn {
+  font: 600 14px var(--font-body); padding: 10px 16px; min-height: 42px; border-radius: 9px;
+  border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer;
+}
+.btn:hover:not(:disabled) { border-color: var(--accent); }
+.btn:disabled { opacity: 0.5; cursor: default; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.ghost { border-color: transparent; background: transparent; color: var(--muted); }
+.kbd { font: 400 12px var(--font-mono); color: var(--muted); margin-left: auto; }
+@media (max-width: 560px) { .kbd { display: none; } }
+
+/* Результат */
+.result-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px; font: 500 12px var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+.scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font: 400 13.5px/1.45 var(--font-mono); font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 8px 12px; white-space: nowrap; }
+th { background: var(--surface-2); font-weight: 500; color: var(--muted); border-bottom: 1px solid var(--line); }
+td { border-top: 1px solid var(--line); }
+tbody tr:first-child td { border-top: 0; }
+td.null { color: var(--muted); font-style: italic; }
+td.num { text-align: right; }
+th.num { text-align: right; }
+.empty { padding: 18px; color: var(--muted); font-size: 14.5px; }
+.banner { padding: 12px 14px; border-radius: 10px; font-size: 14.5px; line-height: 1.5; margin-bottom: 12px; }
+.banner strong { display: block; margin-bottom: 2px; }
+.banner.good { background: var(--good-bg); color: var(--good); }
+.banner.bad { background: var(--bad-bg); color: var(--bad); }
+.banner.warn { background: var(--warn-bg); color: var(--warn); }
+.banner code { background: transparent; padding: 0; color: inherit; }
+
+/* Підказки */
+.sec-title { font: 600 15px var(--font-body); }
+.hint-list { display: flex; flex-direction: column; gap: 8px; margin: 10px 0; }
+.hint { background: var(--warn-bg); color: var(--warn); border-radius: 10px; padding: 10px 14px; font-size: 14.5px; }
+.hint b { font: 500 11.5px var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; display: block; margin-bottom: 2px; }
+.note { font-size: 13.5px; color: var(--muted); }
+
+/* Розбір */
+.explain { border-top: 1px dashed var(--line); padding-top: 18px; display: flex; flex-direction: column; gap: 14px; }
+.solution { background: var(--code-bg); color: var(--code-fg); border-radius: 10px; padding: 12px 16px; font: 500 14px/1.6 var(--font-mono); overflow-x: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
+.parts { display: flex; flex-direction: column; gap: 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.part { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px 16px; padding: 10px 14px; border-top: 1px solid var(--line); }
+.part:first-child { border-top: 0; }
+.part code { background: transparent; padding: 0; font-weight: 500; color: var(--accent); white-space: pre-wrap; }
+.part span { font-size: 14.5px; }
+@media (min-width: 640px) { .part { grid-template-columns: minmax(200px, 2fr) 3fr; } }
+.mistake { background: var(--surface-2); border-radius: 10px; padding: 12px 14px; font-size: 14.5px; }
+.mistake b { display: block; font: 500 11.5px var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 2px; }
+
+/* Довідник по базі */
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0; }
+.tab { font: 500 13px var(--font-mono); padding: 7px 12px; min-height: 36px; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--ink); cursor: pointer; }
+.tab[aria-selected="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.cols { list-style: none; margin: 0 0 12px; padding: 0; font: 400 13px/1.7 var(--font-mono); }
+.cols li { display: flex; flex-wrap: wrap; gap: 0 10px; border-bottom: 1px dotted var(--line); padding-block: 2px; }
+.cols .ty { color: var(--muted); }
+.cols .key { margin-left: auto; color: var(--accent); }
+.rel { font: 400 12.5px/1.6 var(--font-mono); color: var(--muted); margin-top: 12px; }
+.cap { font-size: 14px; color: var(--muted); margin-top: 2px; }
+
+footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px 20px; font-size: 13px; color: var(--muted); }
+footer p { max-width: 70ch; }
+.link { background: none; border: 0; padding: 0; color: var(--muted); text-decoration: underline; cursor: pointer; font: inherit; }
+.finale { text-align: left; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">Інформатика · 11 клас · бази даних</span>
+    <h1>SQL-практикум</h1>
+    <p class="lead">Шкільна бібліотека в таблицях. Пишіть запити в редакторі: вони виконуються прямо тут, а підказки й розбір чекають, коли вони знадобляться.</p>
+    <div class="progress">
+      <span id="progress-text" class="eyebrow"></span>
+      <div class="progress-bar" aria-hidden="true"><i id="progress-fill"></i></div>
+    </div>
+  </header>
+
+  <nav aria-label="Завдання">
+    <div class="pips" id="pips"></div>
+    <p class="legend" style="margin-top:10px">Заповнені кружечки: завдання розв’язано. Пунктирні: розв’язок переглянуто.</p>
+  </nav>
+
+  <div class="layout">
+    <main class="card stack" id="task"></main>
+    <aside class="card" id="schema" aria-label="Структура бази даних"></aside>
+  </div>
+
+  <section class="card finale" id="finale" hidden></section>
+
+  <footer>
+    <p>SQL-рушій написано для цієї вправи. Він розуміє SELECT з DISTINCT, WHERE, GROUP BY, HAVING, ORDER BY, LIMIT, JOIN, LIKE, IN, BETWEEN та функціями COUNT, SUM, AVG, MIN, MAX. Прогрес зберігається в цьому браузері.</p>
+    <button class="link" id="reset" type="button">Скинути прогрес</button>
+  </footer>
+</div>
+
+<script>
+/* Мінімальний SQL-рушій для навчальної вправи: лише SELECT. */
+class SqlError extends Error {}
+
+const KEYWORDS = new Set(['SELECT','DISTINCT','FROM','WHERE','GROUP','BY','HAVING','ORDER','ASC','DESC','LIMIT','AS','AND','OR','NOT','LIKE','IN','BETWEEN','IS','NULL','JOIN','INNER','LEFT','OUTER','ON']);
+const WRITE_WORDS = new Set(['INSERT','UPDATE','DELETE','DROP','CREATE','ALTER','TRUNCATE','REPLACE']);
+const AGG = new Set(['COUNT','SUM','AVG','MIN','MAX']);
+const SCALAR = new Set(['UPPER','LOWER','LENGTH','ROUND','ABS']);
+
+function tokenize(src) {
+  const toks = [];
+  let i = 0;
+  while (i < src.length) {
+    const c = src[i];
+    if (/\s/.test(c)) { i++; continue; }
+    if (c === '-' && src[i + 1] === '-') { while (i < src.length && src[i] !== '\n') i++; continue; }
+    if (/[0-9]/.test(c) || (c === '.' && /[0-9]/.test(src[i + 1] || ''))) {
+      let j = i;
+      while (j < src.length && /[0-9.]/.test(src[j])) j++;
+      toks.push({ k: 'num', v: parseFloat(src.slice(i, j)), s: i, e: j });
+      i = j; continue;
+    }
+    if (c === "'") {
+      let j = i + 1, str = '';
+      for (;;) {
+        if (j >= src.length) throw new SqlError("Не закрито одинарну лапку: текст має починатися й закінчуватися символом '.");
+        if (src[j] === "'") {
+          if (src[j + 1] === "'") { str += "'"; j += 2; continue; }
+          break;
+        }
+        str += src[j++];
+      }
+      toks.push({ k: 'str', v: str, s: i, e: j + 1 });
+      i = j + 1; continue;
+    }
+    if (c === '"' || c === '`') throw new SqlError("Текстові значення в SQL беремо в одинарні лапки: 'Фантастика', а не в подвійні.");
+    if (/[\p{L}_]/u.test(c)) {
+      let j = i;
+      while (j < src.length && /[\p{L}\p{N}_]/u.test(src[j])) j++;
+      const w = src.slice(i, j), up = w.toUpperCase();
+      toks.push(KEYWORDS.has(up) ? { k: 'kw', v: up, s: i, e: j } : { k: 'id', v: w, s: i, e: j });
+      i = j; continue;
+    }
+    const two = src.slice(i, i + 2);
+    if (two === '==') throw new SqlError('У SQL порівняння записують одним знаком =, без подвоєння.');
+    if (['<=', '>=', '<>', '!='].includes(two)) { toks.push({ k: 'op', v: two === '!=' ? '<>' : two, s: i, e: i + 2 }); i += 2; continue; }
+    if ('=<>(),.*+-/%;'.includes(c)) { toks.push({ k: 'op', v: c, s: i, e: i + 1 }); i++; continue; }
+    throw new SqlError(`Невідомий символ «${c}» у позиції ${i + 1}.`);
+  }
+  toks.push({ k: 'eof', v: '', s: src.length, e: src.length });
+  return toks;
+}
+
+function parse(src) {
+  const toks = tokenize(src);
+  let p = 0;
+  const peek = () => toks[p];
+  const isKw = v => peek().k === 'kw' && peek().v === v;
+  const isOp = v => peek().k === 'op' && peek().v === v;
+  const eatKw = v => (isKw(v) ? (p++, true) : false);
+  const eatOp = v => (isOp(v) ? (p++, true) : false);
+  const describe = t => (t.k === 'eof' ? 'кінець запиту' : `«${src.slice(t.s, t.e)}»`);
+  const fail = expected => { throw new SqlError(`Несподівано: ${describe(peek())}. Очікувалося: ${expected}.`); };
+  const expectKw = (v, what) => { if (!eatKw(v)) fail(what || v); };
+  const expectOp = (v, what) => { if (!eatOp(v)) fail(what || `«${v}»`); };
+  const expectIdent = what => {
+    if (peek().k !== 'id') fail(what || 'ім’я');
+    return toks[p++].v;
+  };
+
+  function parseExpr() { return parseOr(); }
+  function parseOr() {
+    let l = parseAnd();
+    while (eatKw('OR')) l = { t: 'bin', op: 'OR', l, r: parseAnd() };
+    return l;
+  }
+  function parseAnd() {
+    let l = parseNot();
+    while (eatKw('AND')) l = { t: 'bin', op: 'AND', l, r: parseNot() };
+    return l;
+  }
+  function parseNot() {
+    if (eatKw('NOT')) return { t: 'not', e: parseNot() };
+    return parseCmp();
+  }
+  function parseCmp() {
+    const l = parseAdd();
+    const t = peek();
+    if (t.k === 'op' && ['=', '<>', '<', '>', '<=', '>='].includes(t.v)) {
+      p++;
+      return { t: 'bin', op: t.v, l, r: parseAdd() };
+    }
+    let neg = false;
+    if (isKw('NOT') && toks[p + 1].k === 'kw' && ['LIKE', 'IN', 'BETWEEN'].includes(toks[p + 1].v)) { p++; neg = true; }
+    let node = null;
+    if (eatKw('LIKE')) node = { t: 'like', l, r: parseAdd() };
+    else if (eatKw('IN')) {
+      expectOp('(', '«(» зі списком значень');
+      const list = [parseAdd()];
+      while (eatOp(',')) list.push(parseAdd());
+      expectOp(')', '«)» після списку значень');
+      node = { t: 'in', l, list };
+    } else if (eatKw('BETWEEN')) {
+      const a = parseAdd();
+      expectKw('AND', 'AND між межами діапазону');
+      node = { t: 'between', l, a, b: parseAdd() };
+    } else if (eatKw('IS')) {
+      const n = eatKw('NOT');
+      expectKw('NULL', 'NULL');
+      return { t: 'isnull', e: l, neg: n };
+    }
+    if (node) return neg ? { t: 'not', e: node } : node;
+    return l;
+  }
+  function parseAdd() {
+    let l = parseMul();
+    while (isOp('+') || isOp('-')) { const op = toks[p++].v; l = { t: 'bin', op, l, r: parseMul() }; }
+    return l;
+  }
+  function parseMul() {
+    let l = parseUnary();
+    while (isOp('*') || isOp('/') || isOp('%')) { const op = toks[p++].v; l = { t: 'bin', op, l, r: parseUnary() }; }
+    return l;
+  }
+  function parseUnary() {
+    if (eatOp('-')) return { t: 'neg', e: parseUnary() };
+    return parsePrimary();
+  }
+  function parsePrimary() {
+    const t = peek();
+    if (t.k === 'num') { p++; return { t: 'lit', v: t.v }; }
+    if (t.k === 'str') { p++; return { t: 'lit', v: t.v }; }
+    if (t.k === 'kw' && t.v === 'NULL') { p++; return { t: 'lit', v: null }; }
+    if (t.k === 'op' && t.v === '(') {
+      p++;
+      const e = parseExpr();
+      expectOp(')', '«)»');
+      return e;
+    }
+    if (t.k === 'id') {
+      p++;
+      if (isOp('(')) {
+        const name = t.v.toUpperCase();
+        if (!AGG.has(name) && !SCALAR.has(name)) throw new SqlError(`Невідома функція ${t.v}(). Доступні: COUNT, SUM, AVG, MIN, MAX, UPPER, LOWER, LENGTH, ROUND, ABS.`);
+        p++;
+        if (name === 'COUNT' && isOp('*')) { p++; expectOp(')', '«)»'); return { t: 'fn', name, star: true, args: [] }; }
+        const distinct = eatKw('DISTINCT');
+        const args = [parseExpr()];
+        while (eatOp(',')) args.push(parseExpr());
+        expectOp(')', '«)» після аргументів функції');
+        return { t: 'fn', name, distinct, args };
+      }
+      if (isOp('.')) {
+        p++;
+        const col = expectIdent('назва стовпця після крапки');
+        return { t: 'col', table: t.v, name: col };
+      }
+      return { t: 'col', name: t.v };
+    }
+    fail('значення, назва стовпця або функція');
+  }
+
+  function parseTableRef() {
+    const name = expectIdent('назва таблиці');
+    let alias = null;
+    if (eatKw('AS')) alias = expectIdent('псевдонім таблиці');
+    else if (peek().k === 'id') alias = toks[p++].v;
+    return { name, alias };
+  }
+
+  function parseSelect() {
+    const first = peek();
+    if (first.k === 'id' && WRITE_WORDS.has(first.v.toUpperCase())) {
+      throw new SqlError('У цій вправі працює лише команда SELECT: вона читає дані й нічого в базі не змінює.');
+    }
+    if (!isKw('SELECT')) fail('запит має починатися зі слова SELECT');
+    p++;
+    const distinct = eatKw('DISTINCT');
+    const items = [];
+    do {
+      if (isOp('*')) { p++; items.push({ star: true }); continue; }
+      if (peek().k === 'id' && toks[p + 1].k === 'op' && toks[p + 1].v === '.' && toks[p + 2].k === 'op' && toks[p + 2].v === '*') {
+        const table = toks[p].v; p += 3;
+        items.push({ star: true, table });
+        continue;
+      }
+      const startTok = peek();
+      const expr = parseExpr();
+      const endPos = toks[p - 1].e;
+      let alias = null;
+      if (eatKw('AS')) alias = expectIdent('псевдонім стовпця');
+      items.push({ expr, alias, text: src.slice(startTok.s, endPos) });
+    } while (eatOp(','));
+    if (!isKw('FROM')) fail('кома між стовпцями або слово FROM');
+    p++;
+    const from = parseTableRef();
+    const joins = [];
+    for (;;) {
+      let left = false;
+      if (isKw('INNER')) { p++; expectKw('JOIN'); }
+      else if (isKw('LEFT')) { p++; eatKw('OUTER'); expectKw('JOIN'); left = true; }
+      else if (isKw('JOIN')) p++;
+      else break;
+      const ref = parseTableRef();
+      expectKw('ON', 'ON (умова з’єднання таблиць)');
+      joins.push({ ref, left, on: parseExpr() });
+    }
+    const q = { distinct, items, from, joins, where: null, group: [], having: null, order: [], limit: null };
+    if (eatKw('WHERE')) q.where = parseExpr();
+    if (eatKw('GROUP')) {
+      expectKw('BY', 'BY після GROUP');
+      do { q.group.push(parseExpr()); } while (eatOp(','));
+    }
+    if (eatKw('HAVING')) q.having = parseExpr();
+    if (eatKw('ORDER')) {
+      expectKw('BY', 'BY після ORDER');
+      do {
+        const e = parseExpr();
+        let desc = false;
+        if (eatKw('DESC')) desc = true; else eatKw('ASC');
+        q.order.push({ e, desc });
+      } while (eatOp(','));
+    }
+    if (eatKw('LIMIT')) {
+      if (peek().k !== 'num') fail('число після LIMIT');
+      q.limit = toks[p++].v;
+    }
+    eatOp(';');
+    if (peek().k !== 'eof') fail('кінець запиту (можливо, пропущено кому, дужку або слово)');
+    return q;
+  }
+  return parseSelect();
+}
+
+function walk(node, fn, insideAgg = false) {
+  if (!node) return;
+  fn(node, insideAgg);
+  const agg = insideAgg || (node.t === 'fn' && AGG.has(node.name));
+  for (const k of ['l', 'r', 'e', 'a', 'b']) if (node[k] && typeof node[k] === 'object') walk(node[k], fn, agg);
+  if (node.list) node.list.forEach(x => walk(x, fn, agg));
+  if (node.args) node.args.forEach(x => walk(x, fn, agg));
+}
+const hasAgg = node => { let f = false; walk(node, n => { if (n.t === 'fn' && AGG.has(n.name)) f = true; }); return f; };
+
+function truthy(v) { return v === true || (typeof v === 'number' && v !== 0); }
+
+function cmp(a, b) {
+  if (typeof a === typeof b) return a < b ? -1 : a > b ? 1 : 0;
+  const na = Number(a), nb = Number(b);
+  if (Number.isFinite(na) && Number.isFinite(nb)) return na < nb ? -1 : na > nb ? 1 : 0;
+  const sa = String(a), sb = String(b);
+  return sa < sb ? -1 : sa > sb ? 1 : 0;
+}
+
+function likeToRegex(pat) {
+  let re = '';
+  for (const ch of String(pat)) {
+    if (ch === '%') re += '.*';
+    else if (ch === '_') re += '.';
+    else re += ch.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+  return new RegExp('^' + re + '$', 'isu');
+}
+
+function runSql(sql, db) {
+  if (!sql || !sql.trim()) throw new SqlError('Запит порожній. Напишіть команду SELECT.');
+  const q = parse(sql);
+
+  const getTable = ref => {
+    const t = db[ref.name.toLowerCase()];
+    if (!t) throw new SqlError(`Таблиці «${ref.name}» не існує. Доступні таблиці: ${Object.keys(db).join(', ')}.`);
+    return t;
+  };
+  const aliases = [];
+  const addAlias = ref => {
+    const a = (ref.alias || ref.name).toLowerCase();
+    if (aliases.some(x => x.alias === a)) throw new SqlError(`Ім’я «${a}» уже використано. Дайте таблицям різні псевдоніми.`);
+    aliases.push({ alias: a, table: getTable(ref) });
+  };
+  addAlias(q.from);
+  q.joins.forEach(j => addAlias(j.ref));
+
+  function resolve(node) {
+    const name = node.name.toLowerCase();
+    if (node.table) {
+      const a = aliases.find(x => x.alias === node.table.toLowerCase());
+      if (!a) throw new SqlError(`Таблиці або псевдоніма «${node.table}» немає у запиті. Доступні: ${aliases.map(x => x.alias).join(', ')}.`);
+      if (!a.table.columns.includes(name)) throw new SqlError(`У таблиці «${a.alias}» немає стовпця «${node.name}». Стовпці: ${a.table.columns.join(', ')}.`);
+      return { alias: a.alias, col: name };
+    }
+    const found = aliases.filter(x => x.table.columns.includes(name));
+    if (found.length === 0) {
+      const all = aliases.map(x => `${x.alias}(${x.table.columns.join(', ')})`).join('; ');
+      throw new SqlError(`Невідомий стовпець «${node.name}». Якщо це текст, візьміть його в одинарні лапки. Стовпці: ${all}.`);
+    }
+    if (found.length > 1) throw new SqlError(`Стовпець «${node.name}» є в кількох таблицях. Уточніть: ${found.map(x => x.alias + '.' + name).join(' або ')}.`);
+    return { alias: found[0].alias, col: name };
+  }
+
+  const selectAliases = new Map();
+  q.items.forEach(it => { if (it.alias) selectAliases.set(it.alias.toLowerCase(), it); });
+
+  const checkCols = node => walk(node, n => { if (n.t === 'col') resolve(n); });
+  q.items.forEach(it => it.expr && checkCols(it.expr));
+  q.joins.forEach(j => checkCols(j.on));
+  if (q.where) {
+    if (hasAgg(q.where)) throw new SqlError('Агрегатні функції (COUNT, SUM…) не можна використовувати у WHERE. Для умов над групами є HAVING.');
+    checkCols(q.where);
+  }
+  q.group.forEach(checkCols);
+  if (q.having) checkCols(q.having);
+  q.order.forEach(o => {
+    if (o.e.t === 'col' && !o.e.table && selectAliases.has(o.e.name.toLowerCase())) return;
+    if (o.e.t === 'lit' && typeof o.e.v === 'number') return;
+    checkCols(o.e);
+  });
+
+  const colVal = (node, ctx) => {
+    const { alias, col } = resolve(node);
+    const r = ctx.row[alias];
+    return r == null ? null : r[col];
+  };
+
+  function ev(node, ctx) {
+    switch (node.t) {
+      case 'lit': return node.v;
+      case 'col': return colVal(node, ctx);
+      case 'neg': { const v = ev(node.e, ctx); return v == null ? null : -v; }
+      case 'not': { const v = ev(node.e, ctx); return v == null ? null : !truthy(v); }
+      case 'isnull': { const v = ev(node.e, ctx); return node.neg ? v != null : v == null; }
+      case 'bin': {
+        if (node.op === 'AND' || node.op === 'OR') {
+          const a = ev(node.l, ctx), b = ev(node.r, ctx);
+          const ta = a == null ? null : truthy(a), tb = b == null ? null : truthy(b);
+          if (node.op === 'AND') return ta === false || tb === false ? false : (ta === null || tb === null ? null : true);
+          return ta === true || tb === true ? true : (ta === null || tb === null ? null : false);
+        }
+        const a = ev(node.l, ctx), b = ev(node.r, ctx);
+        if (a == null || b == null) return null;
+        switch (node.op) {
+          case '=': return cmp(a, b) === 0;
+          case '<>': return cmp(a, b) !== 0;
+          case '<': return cmp(a, b) < 0;
+          case '>': return cmp(a, b) > 0;
+          case '<=': return cmp(a, b) <= 0;
+          case '>=': return cmp(a, b) >= 0;
+          case '+': return Number(a) + Number(b);
+          case '-': return Number(a) - Number(b);
+          case '*': return Number(a) * Number(b);
+          case '/': return Number(b) === 0 ? null : Number(a) / Number(b);
+          case '%': return Number(b) === 0 ? null : Number(a) % Number(b);
+        }
+        return null;
+      }
+      case 'like': {
+        const a = ev(node.l, ctx), b = ev(node.r, ctx);
+        if (a == null || b == null) return null;
+        return likeToRegex(b).test(String(a));
+      }
+      case 'in': {
+        const a = ev(node.l, ctx);
+        if (a == null) return null;
+        return node.list.some(x => { const v = ev(x, ctx); return v != null && cmp(a, v) === 0; });
+      }
+      case 'between': {
+        const a = ev(node.l, ctx), lo = ev(node.a, ctx), hi = ev(node.b, ctx);
+        if (a == null || lo == null || hi == null) return null;
+        return cmp(a, lo) >= 0 && cmp(a, hi) <= 0;
+      }
+      case 'fn': return evFn(node, ctx);
+    }
+    throw new SqlError('Не вдалося обчислити вираз.');
+  }
+
+  function evFn(node, ctx) {
+    if (AGG.has(node.name)) {
+      if (!ctx.rows) throw new SqlError(`Функцію ${node.name}() тут використовувати не можна.`);
+      if (node.star) return ctx.rows.length;
+      let vals = ctx.rows.map(r => ev(node.args[0], { row: r })).filter(v => v != null);
+      if (node.distinct) vals = [...new Set(vals)];
+      if (node.name === 'COUNT') return vals.length;
+      if (!vals.length) return null;
+      if (node.name === 'MIN') return vals.reduce((m, v) => (cmp(v, m) < 0 ? v : m));
+      if (node.name === 'MAX') return vals.reduce((m, v) => (cmp(v, m) > 0 ? v : m));
+      const nums = vals.map(Number);
+      const sum = nums.reduce((s, v) => s + v, 0);
+      return node.name === 'SUM' ? sum : sum / nums.length;
+    }
+    const v = ev(node.args[0], ctx);
+    if (v == null) return null;
+    switch (node.name) {
+      case 'UPPER': return String(v).toUpperCase();
+      case 'LOWER': return String(v).toLowerCase();
+      case 'LENGTH': return String(v).length;
+      case 'ABS': return Math.abs(Number(v));
+      case 'ROUND': {
+        const d = node.args[1] ? Number(ev(node.args[1], ctx)) : 0;
+        const m = Math.pow(10, d);
+        return Math.round(Number(v) * m) / m;
+      }
+    }
+    return null;
+  }
+
+  // FROM + JOIN
+  let rows = aliases[0].table.rows.map(r => ({ [aliases[0].alias]: r }));
+  q.joins.forEach((j, idx) => {
+    const a = aliases[idx + 1];
+    const out = [];
+    for (const lr of rows) {
+      let matched = false;
+      for (const r of a.table.rows) {
+        const cand = { ...lr, [a.alias]: r };
+        if (truthy(ev(j.on, { row: cand }))) { out.push(cand); matched = true; }
+      }
+      if (!matched && j.left) out.push({ ...lr, [a.alias]: null });
+    }
+    rows = out;
+  });
+
+  if (q.where) rows = rows.filter(r => truthy(ev(q.where, { row: r })));
+
+  const grouped = q.group.length > 0 || q.items.some(it => it.expr && hasAgg(it.expr)) || (q.having && hasAgg(q.having)) || q.order.some(o => hasAgg(o.e));
+
+  // Колонки у вибірці
+  const outCols = [];
+  const outItems = [];
+  q.items.forEach(it => {
+    if (it.star) {
+      const list = it.table ? aliases.filter(a => a.alias === it.table.toLowerCase()) : aliases;
+      if (!list.length) throw new SqlError(`Таблиці «${it.table}» немає у запиті.`);
+      list.forEach(a => a.table.columns.forEach(c => {
+        outCols.push(c);
+        outItems.push({ expr: { t: 'col', table: a.alias, name: c } });
+      }));
+    } else {
+      const name = it.alias || (it.expr.t === 'col' ? it.expr.name : it.text);
+      outCols.push(name);
+      outItems.push(it);
+    }
+  });
+
+  let units; // кожна одиниця: контекст для обчислення виразів
+  if (grouped) {
+    const groupKeys = new Set();
+    q.group.forEach(g => { if (g.t === 'col') { const r = resolve(g); groupKeys.add(r.alias + '.' + r.col); } });
+    const allPlain = q.group.every(g => g.t === 'col');
+    const strict = n => walk(n, (x, inAgg) => {
+      if (x.t === 'col' && !inAgg && allPlain) {
+        const r = resolve(x);
+        if (!groupKeys.has(r.alias + '.' + r.col)) {
+          throw new SqlError(`Стовпець «${x.name}» не можна показувати разом з агрегатною функцією, якщо його немає в GROUP BY. Додайте його до GROUP BY або приберіть зі SELECT.`);
+        }
+      }
+    });
+    outItems.forEach(it => strict(it.expr));
+    if (q.having) strict(q.having);
+
+    const map = new Map();
+    if (q.group.length) {
+      rows.forEach(r => {
+        const key = JSON.stringify(q.group.map(g => ev(g, { row: r })));
+        if (!map.has(key)) map.set(key, []);
+        map.get(key).push(r);
+      });
+    } else {
+      map.set('all', rows);
+    }
+    units = [...map.values()].map(g => ({ row: g[0] || {}, rows: g }));
+    if (q.having) units = units.filter(u => truthy(ev(q.having, u)));
+  } else {
+    if (q.having) throw new SqlError('HAVING потрібен разом із GROUP BY або агрегатними функціями. Для звичайних умов використовуйте WHERE.');
+    units = rows.map(r => ({ row: r }));
+  }
+
+  let result = units.map(u => ({
+    ctx: u,
+    out: outItems.map(it => ev(it.expr, u)),
+  }));
+
+  if (q.distinct) {
+    const seen = new Set();
+    result = result.filter(r => { const k = JSON.stringify(r.out); if (seen.has(k)) return false; seen.add(k); return true; });
+  }
+
+  if (q.order.length) {
+    const keyFns = q.order.map(o => {
+      if (o.e.t === 'lit' && typeof o.e.v === 'number') {
+        const i = o.e.v - 1;
+        if (!(i >= 0 && i < outItems.length)) throw new SqlError(`ORDER BY ${o.e.v}: у вибірці немає стовпця з таким номером.`);
+        return r => r.out[i];
+      }
+      if (o.e.t === 'col' && !o.e.table && selectAliases.has(o.e.name.toLowerCase())) {
+        const i = q.items.filter(x => !x.star).findIndex(x => x.alias && x.alias.toLowerCase() === o.e.name.toLowerCase());
+        const idx = outCols.findIndex(c => c.toLowerCase() === o.e.name.toLowerCase());
+        return r => r.out[idx >= 0 ? idx : i];
+      }
+      return r => ev(o.e, r.ctx);
+    });
+    result = result
+      .map((r, n) => ({ r, n, keys: keyFns.map(f => f(r)) }))
+      .sort((x, y) => {
+        for (let i = 0; i < q.order.length; i++) {
+          const a = x.keys[i], b = y.keys[i];
+          let c;
+          if (a == null && b == null) c = 0;
+          else if (a == null) c = -1;
+          else if (b == null) c = 1;
+          else if (typeof a === 'string' && typeof b === 'string') c = a.localeCompare(b, 'uk');
+          else c = cmp(a, b);
+          if (c !== 0) return q.order[i].desc ? -c : c;
+        }
+        return x.n - y.n;
+      })
+      .map(x => x.r);
+  }
+
+  if (q.limit != null) result = result.slice(0, q.limit);
+  return { columns: outCols, rows: result.map(r => r.out) };
+}
+
+
+/* База даних «Шкільна бібліотека» і завдання вправи. */
+const SCHEMA = {
+  books: {
+    caption: 'Книги',
+    cols: [
+      ['id', 'INTEGER', 'pk'],
+      ['title', 'TEXT'],
+      ['author', 'TEXT'],
+      ['genre', 'TEXT'],
+      ['year', 'INTEGER'],
+      ['copies', 'INTEGER'],
+    ],
+    data: [
+      [1, 'Кобзар', 'Тарас Шевченко', 'Поезія', 1840, 9],
+      [2, 'Лісова пісня', 'Леся Українка', 'Драма', 1911, 4],
+      [3, 'Захар Беркут', 'Іван Франко', 'Пригоди', 1883, 3],
+      [4, 'Кайдашева сім’я', 'Іван Нечуй-Левицький', 'Проза', 1879, 7],
+      [5, 'Камінний хрест', 'Василь Стефаник', 'Проза', 1900, 2],
+      [6, 'Володар перснів', 'Дж. Р. Р. Толкін', 'Фантастика', 1954, 6],
+      [7, 'Дюна', 'Френк Герберт', 'Фантастика', 1965, 5],
+      [8, 'Гаррі Поттер і філософський камінь', 'Дж. К. Роулінг', 'Фантастика', 1997, 8],
+      [9, 'Собака Баскервілів', 'Артур Конан Дойл', 'Детектив', 1902, 1],
+      [10, 'Вбивство у «Східному експресі»', 'Агата Крісті', 'Детектив', 1934, 10],
+      [11, 'Інтернат', 'Сергій Жадан', 'Проза', 2017, 11],
+      [12, 'Музей покинутих секретів', 'Оксана Забужко', 'Проза', 2009, 12],
+    ],
+  },
+  readers: {
+    caption: 'Читачі',
+    cols: [
+      ['id', 'INTEGER', 'pk'],
+      ['name', 'TEXT'],
+      ['grade', 'TEXT'],
+    ],
+    data: [
+      [1, 'Олена Коваль', '11-А'],
+      [2, 'Андрій Мельник', '11-Б'],
+      [3, 'Софія Бондар', '10-А'],
+      [4, 'Максим Шевчук', '11-А'],
+      [5, 'Дарина Ткач', '9-Б'],
+      [6, 'Іван Кравець', '10-Б'],
+    ],
+  },
+  loans: {
+    caption: 'Видачі книг',
+    cols: [
+      ['id', 'INTEGER', 'pk'],
+      ['reader_id', 'INTEGER', 'fk → readers.id'],
+      ['book_id', 'INTEGER', 'fk → books.id'],
+      ['loan_date', 'TEXT'],
+      ['returned', 'INTEGER'],
+    ],
+    data: [
+      [1, 1, 6, '2026-09-02', 1],
+      [2, 1, 8, '2026-09-15', 0],
+      [3, 2, 7, '2026-09-03', 1],
+      [4, 2, 6, '2026-09-20', 0],
+      [5, 3, 8, '2026-09-05', 1],
+      [6, 3, 4, '2026-09-18', 0],
+      [7, 4, 9, '2026-09-07', 1],
+      [8, 4, 10, '2026-09-22', 0],
+      [9, 5, 1, '2026-09-10', 1],
+      [10, 5, 3, '2026-09-25', 1],
+      [11, 6, 12, '2026-09-12', 0],
+      [12, 1, 11, '2026-09-28', 0],
+      [13, 2, 2, '2026-09-29', 1],
+      [14, 4, 7, '2026-10-01', 0],
+    ],
+  },
+};
+
+function buildDb() {
+  const db = {};
+  for (const [name, t] of Object.entries(SCHEMA)) {
+    const columns = t.cols.map(c => c[0]);
+    db[name] = { columns, rows: t.data.map(r => Object.fromEntries(columns.map((c, i) => [c, r[i]]))) };
+  }
+  return db;
+}
+
+const TASKS = [
+  {
+    topic: 'SELECT, FROM',
+    title: 'Перший запит',
+    concept: 'Запит починається зі слова `SELECT` (що показати) і `FROM` (з якої таблиці). Зірочка `*` означає «усі стовпці».',
+    text: 'Виведіть усі дані з таблиці `books`.',
+    solution: 'SELECT * FROM books',
+    ordered: false,
+    hints: [
+      'Усі стовпці позначає один символ: зірочка.',
+      'Шаблон запиту: SELECT що_показати FROM таблиця.',
+      'Підставте у шаблон: «що показати» — зірочка, «таблиця» — books.',
+    ],
+    parts: [
+      ['SELECT *', 'Показати всі стовпці.'],
+      ['FROM books', 'Узяти їх із таблиці books.'],
+    ],
+    mistake: 'Не пропускайте FROM. Запит `SELECT * books` — помилка: SQL має знати, де закінчується перелік стовпців.',
+  },
+  {
+    topic: 'Вибір стовпців',
+    title: 'Лише потрібне',
+    concept: 'Замість `*` можна перелічити потрібні стовпці через кому. У результаті вони йдуть у тому порядку, у якому ви їх записали.',
+    text: 'Виведіть назви книг і їхніх авторів: стовпці `title` і `author` з таблиці `books`.',
+    solution: 'SELECT title, author FROM books',
+    ordered: false,
+    hints: [
+      'Замість зірочки напишіть назви стовпців.',
+      'Стовпці в переліку розділяють комою.',
+      'SELECT title, ... FROM books. Другий стовпець — author.',
+    ],
+    parts: [
+      ['SELECT title, author', 'Показати два стовпці: назву й автора.'],
+      ['FROM books', 'Узяти їх із таблиці книг.'],
+    ],
+    mistake: 'Між стовпцями ставте кому. Запит `SELECT title author FROM books` не спрацює.',
+  },
+  {
+    topic: 'WHERE',
+    title: 'Відбір рядків',
+    concept: '`WHERE` залишає в результаті лише ті рядки, які задовольняють умову. Текстові значення в умові беруть в одинарні лапки.',
+    text: 'Знайдіть усі книги жанру «Фантастика». Виведіть `title` і `author`.',
+    solution: "SELECT title, author FROM books WHERE genre = 'Фантастика'",
+    ordered: false,
+    hints: [
+      'Умову записують після FROM, після слова WHERE.',
+      'Умова має вигляд: стовпець = значення. Текст беруть в одинарні лапки.',
+      "Закінчення запиту: WHERE genre = '...'. Вставте жанр.",
+    ],
+    parts: [
+      ['SELECT title, author', 'Які стовпці показати.'],
+      ['FROM books', 'З якої таблиці.'],
+      ["WHERE genre = 'Фантастика'", 'Залишити тільки рядки, де жанр дорівнює «Фантастика».'],
+    ],
+    mistake: "Без лапок `Фантастика` SQL вирішить, що це назва стовпця, і покаже помилку. Текст завжди пишуть як 'текст'.",
+  },
+  {
+    topic: 'AND, OR, порівняння',
+    title: 'Дві умови',
+    concept: 'Умови поєднують: `AND` вимагає, щоб виконались обидві, `OR` — щоб виконалась хоча б одна. Числа порівнюють знаками `>`, `<`, `>=`, `<=`, `=`, `<>`.',
+    text: 'Знайдіть книги, видані після 1950 року, яких у бібліотеці більше 5 примірників. Виведіть `title`, `year`, `copies`.',
+    solution: 'SELECT title, year, copies FROM books WHERE year > 1950 AND copies > 5',
+    ordered: false,
+    hints: [
+      'Потрібні дві умови одночасно. Яке слово їх поєднує?',
+      'Перша умова про рік (year), друга про кількість примірників (copies).',
+      'WHERE year > ... AND copies > ... Підставте числа з умови завдання.',
+    ],
+    parts: [
+      ['SELECT title, year, copies', 'Три стовпці у вказаному порядку.'],
+      ['FROM books', 'Таблиця книг.'],
+      ['WHERE year > 1950', 'Перша умова: рік видання пізніший за 1950.'],
+      ['AND copies > 5', 'І одночасно примірників більше п’яти.'],
+    ],
+    mistake: '«Більше 5» означає `> 5`. Із `>= 5` у результат потрапить «Дюна», у якої рівно 5 примірників.',
+  },
+  {
+    topic: 'ORDER BY',
+    title: 'Сортування',
+    concept: '`ORDER BY` сортує результат. За замовчуванням порядок від меншого до більшого (`ASC`); щоб навпаки, додайте `DESC`. Ця частина стоїть у кінці запиту.',
+    text: 'Виведіть `title` і `copies` усіх книг. Спочатку ті, яких найбільше примірників.',
+    solution: 'SELECT title, copies FROM books ORDER BY copies DESC',
+    ordered: true,
+    hints: [
+      'За що сортуємо? За кількістю примірників, тобто за стовпцем copies.',
+      'Сортування записують у кінці запиту словами ORDER BY стовпець.',
+      'Від більшого до меншого — це DESC (від англ. descending, «за спаданням»).',
+    ],
+    parts: [
+      ['SELECT title, copies', 'Показати назву й кількість примірників.'],
+      ['FROM books', 'З таблиці книг.'],
+      ['ORDER BY copies DESC', 'Відсортувати за copies, від найбільшого значення до найменшого.'],
+    ],
+    mistake: 'Без `DESC` порядок буде зворотний: від найменшої кількості до найбільшої.',
+  },
+  {
+    topic: 'LIKE',
+    title: 'Пошук за шаблоном',
+    concept: '`LIKE` шукає текст за шаблоном. Знак `%` замінює будь-яку кількість символів: `\'К%\'` — починається на К, `\'%ка\'` — закінчується на «ка», `\'%ов%\'` — містить «ов».',
+    text: 'Знайдіть книги, назва яких починається з літери «К». Виведіть `title`.',
+    solution: "SELECT title FROM books WHERE title LIKE 'К%'",
+    ordered: false,
+    hints: [
+      'Для пошуку за частиною тексту в WHERE використовують оператор LIKE замість «=».',
+      'Шаблон пишуть в одинарних лапках. Знак % означає «далі може бути що завгодно».',
+      "title LIKE 'К%'. Перевірте, що К українська, а не латинська.",
+    ],
+    parts: [
+      ['SELECT title', 'Лише назви.'],
+      ['FROM books', 'З таблиці книг.'],
+      ["WHERE title LIKE 'К%'", 'Назва починається з К, а після неї йде будь-яка кількість будь-яких символів.'],
+    ],
+    mistake: 'Українська «К» і латинська «K» виглядають однаково, але для SQL це різні символи. Якщо запит нічого не знаходить, перевірте розкладку клавіатури.',
+  },
+  {
+    topic: 'COUNT, SUM, AVG',
+    title: 'Підрахунок',
+    concept: 'Агрегатні функції складають багато рядків в одне значення: `COUNT(*)` — кількість рядків, `SUM(x)` — сума, `AVG(x)` — середнє, `MIN(x)` і `MAX(x)` — найменше й найбільше. Результат — один рядок.',
+    text: 'Скільки книг жанру «Фантастика» є в бібліотеці? Виведіть одне число.',
+    solution: "SELECT COUNT(*) FROM books WHERE genre = 'Фантастика'",
+    ordered: false,
+    hints: [
+      'Потрібна функція, яка рахує рядки. Вона називається COUNT.',
+      'COUNT(*) рахує всі рядки, що залишились після відбору. Відбір робить WHERE.',
+      "SELECT COUNT(*) FROM books WHERE genre = '...'",
+    ],
+    parts: [
+      ['SELECT COUNT(*)', 'Порахувати рядки й показати число.'],
+      ['FROM books', 'У таблиці книг.'],
+      ["WHERE genre = 'Фантастика'", 'Але лише тих, що мають жанр «Фантастика». WHERE спрацьовує раніше, ніж COUNT.'],
+    ],
+    mistake: 'Якщо прибрати WHERE, функція порахує всі книги в таблиці, а не лише фантастику.',
+  },
+  {
+    topic: 'GROUP BY',
+    title: 'Групування',
+    concept: '`GROUP BY` ділить рядки на групи за значенням стовпця, а агрегатна функція рахує окремо для кожної групи. У `SELECT` дозволено показувати стовпець групування й агрегати.',
+    text: 'Для кожного жанру виведіть `genre` і кількість книг цього жанру.',
+    solution: 'SELECT genre, COUNT(*) FROM books GROUP BY genre',
+    ordered: false,
+    hints: [
+      'Рахувати треба окремо по кожному жанру, тобто групувати за стовпцем genre.',
+      'Групування записують після FROM (і після WHERE, якщо він є): GROUP BY стовпець.',
+      'SELECT genre, COUNT(*) FROM books GROUP BY ...',
+    ],
+    parts: [
+      ['SELECT genre, COUNT(*)', 'Показати жанр і кількість рядків у ньому.'],
+      ['FROM books', 'З таблиці книг.'],
+      ['GROUP BY genre', 'Об’єднати рядки з однаковим жанром у групи; COUNT(*) рахує кожну групу окремо.'],
+    ],
+    mistake: 'Стовпець, якого немає в GROUP BY, не можна показувати поруч з агрегатом. `SELECT title, COUNT(*) FROM books GROUP BY genre` — помилка: у групі багато різних назв.',
+  },
+  {
+    topic: 'HAVING',
+    title: 'Відбір груп',
+    concept: '`WHERE` відбирає рядки до групування, а `HAVING` відбирає готові групи. Тому умову з `COUNT(*)` пишуть саме в `HAVING`, після `GROUP BY`.',
+    text: 'Виведіть жанри, у яких більше однієї книги: `genre` і кількість книг.',
+    solution: 'SELECT genre, COUNT(*) FROM books GROUP BY genre HAVING COUNT(*) > 1',
+    ordered: false,
+    hints: [
+      'Це попередній запит, до якого додається умова на групи.',
+      'Умову над результатом агрегатної функції пишуть не у WHERE, а після GROUP BY у HAVING.',
+      'HAVING COUNT(*) > ... Підставте число з умови завдання.',
+    ],
+    parts: [
+      ['SELECT genre, COUNT(*)', 'Жанр і кількість книг.'],
+      ['FROM books', 'З таблиці книг.'],
+      ['GROUP BY genre', 'Скласти групи за жанром.'],
+      ['HAVING COUNT(*) > 1', 'Залишити лише групи, де книг більше однієї.'],
+    ],
+    mistake: 'У `WHERE` писати `COUNT(*) > 1` не можна: на цьому етапі груп ще немає. Умови для груп завжди в `HAVING`.',
+  },
+  {
+    topic: 'JOIN',
+    title: 'З’єднання таблиць',
+    concept: 'У `loans` лише номери: `reader_id` і `book_id`. `JOIN … ON` з’єднує таблиці за збігом значень. Щоб розрізнити однойменні стовпці, пишуть `таблиця.стовпець`, а таблицям дають короткі псевдоніми: `FROM loans l`.',
+    text: 'Виведіть ім’я читача (`name`) і назву книги (`title`) для всіх видач, де книгу ще не повернули (`returned = 0`).',
+    solution: 'SELECT r.name, b.title FROM loans l JOIN readers r ON l.reader_id = r.id JOIN books b ON l.book_id = b.id WHERE l.returned = 0',
+    ordered: false,
+    hints: [
+      'Потрібні три таблиці: loans (хто що взяв), readers (імена) і books (назви).',
+      'Почніть з FROM loans, потім JOIN readers ON loans.reader_id = readers.id. Для books діє така сама схема.',
+      'Умову returned = 0 пишуть після всіх з’єднань, у WHERE.',
+    ],
+    parts: [
+      ['SELECT r.name, b.title', 'Ім’я з таблиці readers (псевдонім r) і назва з books (псевдонім b).'],
+      ['FROM loans l', 'Відправна точка: таблиця видач.'],
+      ['JOIN readers r ON l.reader_id = r.id', 'До кожної видачі додати читача, чий id збігається з reader_id.'],
+      ['JOIN books b ON l.book_id = b.id', 'І книгу, чий id збігається з book_id.'],
+      ['WHERE l.returned = 0', 'Лишити лише видачі, де книгу не повернули.'],
+    ],
+    mistake: 'Стовпець `id` є в кількох таблицях, тому пишіть `r.id`, а не просто `id`. Інакше SQL не знатиме, який із них ви мали на увазі.',
+  },
+  {
+    topic: 'Усе разом',
+    title: 'Підсумкове завдання',
+    concept: 'Тут працюють усі вивчені інструменти: з’єднання, групування, агрегатна функція й сортування за кількома стовпцями (`ORDER BY a DESC, b ASC`).',
+    text: 'Скільки книг узяв кожен читач? Виведіть `name` і кількість видач. Спочатку ті, хто брав найбільше; якщо кількість однакова, то за іменем в алфавітному порядку.',
+    solution: 'SELECT r.name, COUNT(*) FROM readers r JOIN loans l ON l.reader_id = r.id GROUP BY r.name ORDER BY COUNT(*) DESC, r.name ASC',
+    ordered: true,
+    hints: [
+      'З’єднайте readers і loans, згрупуйте за іменем читача й порахуйте рядки.',
+      'Сортувати можна за функцією: ORDER BY COUNT(*) DESC. Другий критерій дописується через кому.',
+      'ORDER BY COUNT(*) DESC, r.name ASC. Критерії перевіряються по черзі.',
+    ],
+    parts: [
+      ['SELECT r.name, COUNT(*)', 'Ім’я читача й кількість його видач.'],
+      ['FROM readers r JOIN loans l ON l.reader_id = r.id', 'З’єднати читачів з їхніми видачами.'],
+      ['GROUP BY r.name', 'Одна група на кожного читача.'],
+      ['ORDER BY COUNT(*) DESC, r.name ASC', 'Спершу більше видач, а при рівності за алфавітом.'],
+    ],
+    mistake: 'Другий критерій сортування спрацьовує лише там, де перший дав однакові значення. Тому читачі з трьома книжками йдуть за абеткою.',
+  },
+];
+
+
+(function () {
+  const DB = buildDb();
+  const N = TASKS.length;
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const fmt = s => esc(s).replace(/`([^`]+)`/g, '<code>$1</code>');
+  const plural = (n, f) => {
+    const m10 = n % 10, m100 = n % 100;
+    if (m10 === 1 && m100 !== 11) return f[0];
+    if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return f[1];
+    return f[2];
+  };
+  const ROWS = ['рядок', 'рядки', 'рядків'];
+  const COLS = ['стовпець', 'стовпці', 'стовпців'];
+  const HINTS = ['підказка', 'підказки', 'підказок'];
+
+  const KEY = 'sql-practicum-v1';
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { saved = {}; }
+  const state = {
+    idx: Number.isInteger(saved.idx) && saved.idx >= 0 && saved.idx < N ? saved.idx : 0,
+    solved: saved.solved || {},   // номер завдання -> скільки підказок використано
+    seen: saved.seen || {},       // розв’язок переглянуто
+    drafts: saved.drafts || {},
+    hints: saved.hints || {},     // скільки підказок показано
+    result: {},                   // останній результат у цій сесії
+    schemaTab: 'books',
+    resetArmed: false,
+  };
+  function persist() {
+    try {
+      localStorage.setItem(KEY, JSON.stringify({ idx: state.idx, solved: state.solved, seen: state.seen, drafts: state.drafts, hints: state.hints }));
+    } catch (e) { /* сховище може бути недоступним */ }
+  }
+
+  const EXPECT = TASKS.map(t => runSql(t.solution, DB));
+
+  function evaluate(sql) {
+    try { return { ok: true, res: runSql(sql, DB) }; }
+    catch (e) { return { ok: false, err: e instanceof SqlError ? e.message : 'Не вдалося виконати запит: ' + e.message }; }
+  }
+  const norm = v => (v === null || v === undefined ? 'NULL' : typeof v === 'number' ? String(Math.round(v * 1e6) / 1e6) : String(v).trim());
+
+  function compare(task, i, res) {
+    const exp = EXPECT[i];
+    if (res.columns.length !== exp.columns.length) {
+      return { ok: false, msg: `Потрібно ${exp.columns.length} ${plural(exp.columns.length, COLS)}, а у вашому результаті ${res.columns.length}. Перевірте перелік після SELECT.` };
+    }
+    const a = res.rows.map(r => r.map(norm));
+    const b = exp.rows.map(r => r.map(norm));
+    if (a.length !== b.length) {
+      const tip = a.length > b.length ? 'У результат потрапили зайві рядки: умова надто м’яка.' : 'Деяких потрібних рядків немає: умова надто сувора.';
+      return { ok: false, msg: `Рядків у результаті ${a.length}, а має бути ${b.length}. ${tip}` };
+    }
+    const key = r => JSON.stringify(r);
+    const sa = a.map(key).sort(), sb = b.map(key).sort();
+    if (!sa.every((x, k) => x === sb[k])) {
+      return { ok: false, msg: 'Форма результату правильна, але значення відрізняються від очікуваних. Перевірте умову та порядок стовпців.' };
+    }
+    if (task.ordered && !a.every((r, k) => key(r) === key(b[k]))) {
+      return { ok: false, msg: 'Рядки правильні, але розташовані в іншому порядку. Перевірте ORDER BY і напрям DESC або ASC.' };
+    }
+    return { ok: true };
+  }
+
+  /* ---------- Перемикач завдань і прогрес ---------- */
+  function solvedCount() { return Object.keys(state.solved).length; }
+
+  function renderPips() {
+    $('pips').innerHTML = TASKS.map((t, i) => {
+      const cls = ['pip'];
+      if (state.solved[i] !== undefined) cls.push('done');
+      else if (state.seen[i]) cls.push('seen');
+      if (i === state.idx) cls.push('current');
+      return `<button type="button" class="${cls.join(' ')}" data-i="${i}" title="${esc(t.title)}" aria-label="Завдання ${i + 1}: ${esc(t.title)}"${i === state.idx ? ' aria-current="step"' : ''}>${i + 1}</button>`;
+    }).join('');
+    $('pips').querySelectorAll('.pip').forEach(b => b.addEventListener('click', () => go(+b.dataset.i)));
+    const n = solvedCount();
+    $('progress-text').textContent = `Розв’язано ${n} з ${N}`;
+    $('progress-fill').style.width = (n / N * 100) + '%';
+  }
+
+  function go(i) {
+    saveDraft();
+    state.idx = i;
+    persist();
+    renderAll();
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  }
+
+  function saveDraft() {
+    const ta = $('sql');
+    if (ta) { state.drafts[state.idx] = ta.value; persist(); }
+  }
+
+  /* ---------- Завдання ---------- */
+  const CHIPS = ['SELECT', 'FROM', 'WHERE', 'AND', 'OR', 'ORDER BY', 'DESC', 'LIKE', 'COUNT(*)', 'GROUP BY', 'HAVING', 'JOIN', 'ON', 'AS', '*', ',', "''"];
+
+  function renderTask() {
+    const i = state.idx, t = TASKS[i], e = EXPECT[i];
+    const schemaLine = Object.entries(SCHEMA).map(([n, s]) => `<span><b>${n}</b>(${s.cols.map(c => c[0]).join(', ')})</span>`).join('');
+    $('task').innerHTML = `
+      <div class="task-top"><span class="eyebrow">Завдання ${i + 1} з ${N}</span><span class="tag">${esc(t.topic)}</span></div>
+      <h2>${esc(t.title)}</h2>
+      <div class="concept"><span class="label">Спочатку про головне</span><p>${fmt(t.concept)}</p></div>
+      <p class="ask">${fmt(t.text)}</p>
+      <p class="shape">Очікується: ${e.rows.length} ${plural(e.rows.length, ROWS)}, ${e.columns.length} ${plural(e.columns.length, COLS)}${t.ordered ? '; порядок рядків важливий' : ''}.</p>
+      <div class="schema-line" aria-label="Таблиці">${schemaLine}</div>
+      <div>
+        <label class="sr-only" for="sql" style="position:absolute;left:-9999px">Ваш SQL-запит</label>
+        <div class="editor">
+          <textarea id="sql" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" rows="5" placeholder="Напишіть запит тут, наприклад: SELECT ... FROM ..."></textarea>
+          <div class="chips" id="chips">${CHIPS.map(c => `<button type="button" class="chip" data-ins="${esc(c)}">${esc(c)}</button>`).join('')}</div>
+        </div>
+      </div>
+      <div class="actions">
+        <button type="button" class="btn" id="run">Виконати</button>
+        <button type="button" class="btn primary" id="check">Перевірити відповідь</button>
+        <button type="button" class="btn ghost" id="clear">Очистити</button>
+        <span class="kbd">Ctrl + Enter: виконати</span>
+      </div>
+      <div id="result" aria-live="polite"></div>
+      <section id="hints"></section>
+      <section id="explain"></section>`;
+
+    const ta = $('sql');
+    ta.value = state.drafts[i] || '';
+    ta.addEventListener('input', () => { state.drafts[state.idx] = ta.value; persist(); });
+    ta.addEventListener('keydown', ev => {
+      if ((ev.ctrlKey || ev.metaKey) && ev.key === 'Enter') { ev.preventDefault(); run(false); }
+      else if (ev.key === 'Tab' && !ev.shiftKey) { ev.preventDefault(); insertAtCursor('  '); }
+    });
+    $('chips').querySelectorAll('.chip').forEach(b => b.addEventListener('click', () => {
+      const v = b.dataset.ins;
+      if (v === "''") { insertAtCursor("''"); const p = ta.selectionStart - 1; ta.setSelectionRange(p, p); }
+      else if (v === ',' ) insertAtCursor(', ');
+      else insertAtCursor(v + ' ');
+      ta.focus();
+    }));
+    $('run').addEventListener('click', () => run(false));
+    $('check').addEventListener('click', () => run(true));
+    $('clear').addEventListener('click', () => { ta.value = ''; state.drafts[state.idx] = ''; persist(); delete state.result[state.idx]; renderResult(); ta.focus(); });
+    renderResult();
+    renderHints();
+    renderExplain();
+  }
+
+  function insertAtCursor(text) {
+    const ta = $('sql');
+    const s = ta.selectionStart, e = ta.selectionEnd;
+    ta.value = ta.value.slice(0, s) + text + ta.value.slice(e);
+    const pos = s + text.length;
+    ta.setSelectionRange(pos, pos);
+    state.drafts[state.idx] = ta.value;
+    persist();
+  }
+
+  function tableHtml(res) {
+    if (!res.rows.length) return `<div class="empty">Запит виконано, але жодного рядка не знайдено.</div>`;
+    const isNum = res.rows[0].map((_, c) => res.rows.every(r => r[c] === null || typeof r[c] === 'number'));
+    const head = res.columns.map((c, k) => `<th class="${isNum[k] ? 'num' : ''}">${esc(c)}</th>`).join('');
+    const body = res.rows.slice(0, 100).map(r => `<tr>${r.map((v, k) => v === null ? '<td class="null">NULL</td>' : `<td class="${isNum[k] ? 'num' : ''}">${esc(v)}</td>`).join('')}</tr>`).join('');
+    return `<div class="scroll"><table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
+  }
+
+  function renderResult() {
+    const r = state.result[state.idx];
+    const box = $('result');
+    if (!r) {
+      box.innerHTML = `<div class="result-head"><span>Результат</span></div><div class="scroll"><div class="empty">Тут з’явиться результат запиту. Натисніть «Виконати», щоб побачити, що знайшов запит, або «Перевірити відповідь».</div></div>`;
+      return;
+    }
+    let html = '';
+    if (r.err) {
+      html += `<div class="banner bad"><strong>Помилка в запиті</strong>${esc(r.err)}</div>`;
+    } else {
+      if (r.verdict) {
+        html += r.verdict.ok
+          ? `<div class="banner good"><strong>Правильно</strong>Результат збігається з очікуваним.</div>`
+          : `<div class="banner warn"><strong>Поки що не те</strong>${esc(r.verdict.msg)}</div>`;
+      }
+      html += `<div class="result-head"><span>Результат</span><span>${r.res.rows.length} ${plural(r.res.rows.length, ROWS)} · ${r.res.columns.length} ${plural(r.res.columns.length, COLS)}</span></div>${tableHtml(r.res)}`;
+    }
+    box.innerHTML = html;
+  }
+
+  function run(check) {
+    const i = state.idx;
+    const sql = $('sql').value;
+    state.drafts[i] = sql;
+    const ev = evaluate(sql);
+    if (!ev.ok) {
+      state.result[i] = { err: ev.err };
+    } else {
+      const entry = { res: ev.res };
+      if (check) {
+        entry.verdict = compare(TASKS[i], i, ev.res);
+        if (entry.verdict.ok && state.solved[i] === undefined) {
+          state.solved[i] = state.hints[i] || 0;
+          delete state.seen[i];
+        }
+      }
+      state.result[i] = entry;
+    }
+    persist();
+    renderPips();
+    renderResult();
+    renderHints();
+    renderExplain();
+    renderFinale();
+    if (check && state.result[i].verdict && state.result[i].verdict.ok) {
+      const ex = $('explain');
+      if (ex && ex.scrollIntoView) ex.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  }
+
+  /* ---------- Підказки ---------- */
+  function renderHints() {
+    const i = state.idx, t = TASKS[i];
+    const shown = state.hints[i] || 0;
+    const done = state.solved[i] !== undefined || state.seen[i];
+    let html = `<div class="sec-title">Підказки</div>`;
+    if (shown) {
+      html += `<div class="hint-list">${t.hints.slice(0, shown).map((h, k) => `<div class="hint"><b>Підказка ${k + 1}</b>${fmt(h)}</div>`).join('')}</div>`;
+    } else {
+      html += `<p class="note" style="margin:6px 0 10px">Спробуйте самостійно. Підказки відкриваються по одній, від найлегшої до найдокладнішої.</p>`;
+    }
+    html += `<div class="actions">`;
+    if (shown < t.hints.length) html += `<button type="button" class="btn" id="hint-btn">Показати підказку ${shown + 1} з ${t.hints.length}</button>`;
+    if (!done && shown >= t.hints.length) html += `<button type="button" class="btn" id="reveal-btn">Показати розв’язок і розбір</button>`;
+    html += `</div>`;
+    if (!done && shown >= t.hints.length) html += `<p class="note" style="margin-top:8px">Усі підказки відкрито. Якщо не виходить, перегляньте розбір і потім спробуйте записати запит самостійно.</p>`;
+    $('hints').innerHTML = html;
+    const hb = $('hint-btn');
+    if (hb) hb.addEventListener('click', () => { state.hints[i] = shown + 1; persist(); renderHints(); });
+    const rb = $('reveal-btn');
+    if (rb) rb.addEventListener('click', () => { state.seen[i] = true; persist(); renderPips(); renderHints(); renderExplain(); $('explain').scrollIntoView({ block: 'nearest', behavior: 'smooth' }); });
+  }
+
+  /* ---------- Розбір ---------- */
+  function renderExplain() {
+    const i = state.idx, t = TASKS[i];
+    const box = $('explain');
+    const solved = state.solved[i] !== undefined;
+    if (!solved && !state.seen[i]) { box.innerHTML = ''; return; }
+    const used = state.solved[i];
+    const status = solved
+      ? (used === 0 ? 'Розв’язано без підказок.' : `Розв’язано. Використано ${used} ${plural(used, HINTS)}.`)
+      : 'Розв’язок переглянуто. Спробуйте записати його своїми словами в редакторі й натисніть «Перевірити відповідь».';
+    const next = i < N - 1
+      ? `<button type="button" class="btn primary" id="next">Наступне завдання</button>`
+      : '';
+    box.innerHTML = `<div class="explain">
+      <div class="sec-title">Розбір завдання</div>
+      <p class="note">${esc(status)}</p>
+      <div class="solution">${esc(t.solution.replace(/ (FROM|WHERE|GROUP BY|HAVING|ORDER BY|JOIN) /g, '\n$1 ').replace(/\n(JOIN) /g, '\n$1 '))}</div>
+      <div class="parts">${t.parts.map(p => `<div class="part"><code>${esc(p[0])}</code><span>${esc(p[1])}</span></div>`).join('')}</div>
+      <div class="mistake"><b>Типова помилка</b>${fmt(t.mistake)}</div>
+      <div class="actions">${next}</div>
+    </div>`;
+    const nb = $('next');
+    if (nb) nb.addEventListener('click', () => go(i + 1));
+  }
+
+  /* ---------- Довідник по базі ---------- */
+  function renderSchema() {
+    const name = state.schemaTab, s = SCHEMA[name];
+    const db = DB[name];
+    const tabs = Object.keys(SCHEMA).map(n => `<button type="button" class="tab" role="tab" data-t="${n}" aria-selected="${n === name}">${n}</button>`).join('');
+    const cols = s.cols.map(c => `<li><span>${c[0]}</span><span class="ty">${c[1]}</span>${c[2] ? `<span class="key">${esc(c[2])}</span>` : ''}</li>`).join('');
+    const res = { columns: db.columns, rows: db.rows.map(r => db.columns.map(c => r[c])) };
+    $('schema').innerHTML = `
+      <div class="eyebrow">База даних</div>
+      <h3 style="font:700 1.15rem/1.3 var(--font-display);margin-top:6px">Шкільна бібліотека</h3>
+      <div class="tabs" role="tablist">${tabs}</div>
+      <p class="cap">${esc(s.caption)}: ${db.rows.length} ${plural(db.rows.length, ROWS)}</p>
+      <ul class="cols" style="margin-top:8px">${cols}</ul>
+      ${tableHtml(res)}
+      <p class="rel">loans.reader_id → readers.id<br>loans.book_id → books.id<br>returned: 1 повернуто, 0 ще в читача</p>`;
+    $('schema').querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => { state.schemaTab = b.dataset.t; renderSchema(); }));
+  }
+
+  /* ---------- Фінал і скидання ---------- */
+  function renderFinale() {
+    const box = $('finale');
+    if (solvedCount() < N) { box.hidden = true; return; }
+    const clean = Object.values(state.solved).filter(v => v === 0).length;
+    box.hidden = false;
+    box.innerHTML = `<div class="stack">
+      <span class="eyebrow">Практикум завершено</span>
+      <h2>Усі ${N} завдань розв’язано</h2>
+      <p>Без підказок: ${clean} з ${N}. Тепер можна придумати власні запитання до цієї бази: які книги брали найчастіше, у кого є борги, скільки видач було у вересні.</p>
+    </div>`;
+  }
+
+  function renderAll() {
+    renderPips();
+    renderTask();
+    renderSchema();
+    renderFinale();
+  }
+
+  $('reset').addEventListener('click', () => {
+    if (!state.resetArmed) {
+      state.resetArmed = true;
+      $('reset').textContent = 'Справді скинути? Натисніть ще раз';
+      setTimeout(() => { state.resetArmed = false; $('reset').textContent = 'Скинути прогрес'; }, 4000);
+      return;
+    }
+    state.idx = 0; state.solved = {}; state.seen = {}; state.drafts = {}; state.hints = {}; state.result = {};
+    state.resetArmed = false;
+    $('reset').textContent = 'Скинути прогрес';
+    persist();
+    renderAll();
+  });
+
+  renderAll();
+})();
+
+</script>
+
+</body></html>
